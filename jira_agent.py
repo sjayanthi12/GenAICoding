@@ -27,12 +27,16 @@ client = OpenAI(
 )
 
 def call_function(name, args):
-    if name == "create_issue":
-        return create_issue(**args)
-    if name == "get_issues":
-        return get_issues(**args)
-    if name == "update_issues":
-        return update_issue(**args)
+    functions = {
+        "create_issue": create_issue,
+        "get_issues": get_issues,
+        "update_issue": update_issue,
+        "get_issue": get_issue,
+        "delete_issue": delete_issue,
+        "transition_issue": transition_issue,
+    }
+    func = functions.get(name)
+    return func(**args) if func else {"error": f"Function {name} not found"}
    
    
 if len(sys.argv) < 2:
@@ -103,9 +107,9 @@ tool_call = response.output[0]
 name=tool_call.name
 args = json.loads(tool_call.arguments)
 
-print("This is new " + tool_call.arguments + "  "+ name)
+print(f"This is new {tool_call.arguments}  {name}")
 
 
 result = call_function(name, args)
 
-print(result)
+print(result) 

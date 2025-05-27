@@ -1,10 +1,7 @@
 from atlassian import Jira
 from langchain_core.tools import tool
-
 from dotenv import load_dotenv
-
 import os
-
 load_dotenv('.env')
 
 JIRA_URL = os.environ.get("JIRA_INSTANCE_URL")
@@ -182,4 +179,3 @@ def transition_issue(issue_id: str, transition_id: str) -> dict:
     return {
         "message": "Issue transitioned successfully"
     }
-

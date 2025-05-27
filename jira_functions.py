@@ -15,14 +15,6 @@ JIRA_API_TOKEN = os.environ.get("JIRA_API_TOKEN")
 jira = Jira(url=JIRA_URL, username=JIRA_USERNAME, password=JIRA_API_TOKEN)
 
 def create_issue(summary: str, description: str, issue_type: str) -> dict:
-    """
-    Creates a Jira issue.
-    :param summary: The issue summary
-    :param description: The issue description
-    :param issue_type: The issue type
-    :return: The created issue
-    """
-
     print("New issue is being created")
     try:
         new_issue = jira.create_issue(
@@ -33,39 +25,26 @@ def create_issue(summary: str, description: str, issue_type: str) -> dict:
                 "issuetype": {"name": issue_type}
             }
         )
+        return {"id": new_issue.id, "key": new_issue.key, "message": "Issue created successfully"}
     except Exception as e:
-        return {
-            "error": str(e)
-        }
+        return {"error": str(e)}
 
     print(new_issue)
 
 def update_issue(issue_id: str, summary: str, description: str, issue_type: str) -> dict:
-    """
-    Updates a Jira issue.
-    :param issue_id: The issue ID
-    :param summary: The issue summary
-    :param description: The issue description
-    :param issue_type: The issue type
-    :return: The updated issue
-    """
-
-    print("Updating issue" + issue_id)
+    print(f"Updating issue {issue_id}")
     try:
         issue = jira.issue(issue_id)
-
         fields = {
             "summary": summary if summary else issue.fields.summary,
             "description": description if description else issue.fields.description,
             "issuetype": {"name": issue_type if issue_type else issue.fields.issuetype.name}
         }
-
         issue.update(fields=fields)
+        return {"message": f"Issue {issue_id} updated successfully"}
     except Exception as e:
-        return {
-            "error": str(e)
-        }
-
+        return {"error": str(e)}
+    
 def delete_issue(issue_id: str) -> dict:
     """
     Deletes a Jira issue.
@@ -84,19 +63,17 @@ def delete_issue(issue_id: str) -> dict:
 
 
 def get_issue(issue_id: str) -> dict:
-    """
-    Gets a Jira issue.
-    :param issue_id: The issue ID
-    :return: The issue
-    """
     try:
         issue = jira.issue(issue_id)
-    except Exception as e:
         return {
-            "error": str(e)
+            "id": issue.id,
+            "key": issue.key,
+            "summary": issue.fields.summary,
+            "description": issue.fields.description,
+            "type": issue.fields.issuetype.name
         }
-
-    return issue
+    except Exception as e:
+        return {"error": str(e)}
 
 def get_issues(project: str) -> dict:
 
