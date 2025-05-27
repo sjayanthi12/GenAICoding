@@ -12,7 +12,7 @@ JIRA_USERNAME = os.environ.get("JIRA_USERNAME")
 JIRA_API_TOKEN = os.environ.get("JIRA_API_TOKEN")
 
 
-jira = Jira(url=JIRA_URL, username=JIRA_USERNAME, password=JIRA_API_TOKEN)
+jira = JIRA(url=JIRA_URL, username=JIRA_USERNAME, password=JIRA_API_TOKEN)
 
 @tool
 def create_issue(summary: str, description: str, issue_type: str) -> dict:
