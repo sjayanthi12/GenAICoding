@@ -1,16 +1,12 @@
 from jira import JIRA
 from langchain_core.tools import tool
-
 from dotenv import load_dotenv
-
 import os
-
 load_dotenv('.env')
 
 JIRA_URL = os.environ.get("JIRA_INSTANCE_URL")
 JIRA_USERNAME = os.environ.get("JIRA_USERNAME")
 JIRA_API_TOKEN = os.environ.get("JIRA_API_TOKEN")
-
 
 jira = JIRA(url=JIRA_URL, username=JIRA_USERNAME, password=JIRA_API_TOKEN)
 
