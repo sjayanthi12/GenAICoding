@@ -1,13 +1,16 @@
 import os
 from dotenv import load_dotenv
-from agents import Agent, Runner
+#from agents import Agent, Runner
 from atlassian import Jira
 import json, sys
 from openai import OpenAI
 from jira_functions import create_issue, update_issue, delete_issue, get_issue, get_issues, get_issue_comments, transition_issue
+import tensorflow_probability as tfp
+
+tfd = tfp.distributions
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv('.env')
 
 # Access your API key
 api_key = os.getenv("OPENAI_API_KEY")
@@ -34,10 +37,12 @@ def call_function(name, args):
         "get_issue": get_issue,
         "delete_issue": delete_issue,
         "transition_issue": transition_issue,
+        "send_latency_metric" : send_latency_metric
     }
     func = functions.get(name)
     return func(**args) if func else {"error": f"Function {name} not found"}
    
+
    
 if len(sys.argv) < 2:
     print("Please provide a prompt.")
@@ -77,6 +82,7 @@ tools = [{
     "strict": True
 },
 
+
 {
 	"type": "function",
     "name": "create_issue",
@@ -94,6 +100,7 @@ tools = [{
     "strict": True
 }]
 
+print("---")
 input_messages = [{"role": "user", "content": user_prompt}]
 
 response = client.responses.create(
