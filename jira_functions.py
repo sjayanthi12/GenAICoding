@@ -1,25 +1,22 @@
 from atlassian import Jira
 from langchain_core.tools import tool
-
 from dotenv import load_dotenv
-
-import os
-
+import os, openai
 load_dotenv('.env')
 
 JIRA_URL = os.environ.get("JIRA_INSTANCE_URL")
 JIRA_USERNAME = os.environ.get("JIRA_USERNAME")
 JIRA_API_TOKEN = os.environ.get("JIRA_API_TOKEN")
-
+project = os.environ.get("JIRA_PROJECT_KEY")
 
 jira = Jira(url=JIRA_URL, username=JIRA_USERNAME, password=JIRA_API_TOKEN)
 
-def create_issue(summary: str, description: str, issue_type: str) -> dict:
+def create_issue(project: str, summary: str, description: str, issue_type: str) -> dict:
     print("New issue is being created")
     try:
         new_issue = jira.create_issue(
             fields={
-                "project": {"key": os.environ.get('JIRA_PROJECT_KEY')},
+                "project": {"key": project},
                 "summary": summary,
                 "description": description,
                 "issuetype": {"name": issue_type}
@@ -28,8 +25,6 @@ def create_issue(summary: str, description: str, issue_type: str) -> dict:
         return {"id": new_issue.id, "key": new_issue.key, "message": "Issue created successfully"}
     except Exception as e:
         return {"error": str(e)}
-
-    print(new_issue)
 
 def update_issue(issue_id: str, summary: str, description: str, issue_type: str) -> dict:
     print(f"Updating issue {issue_id}")
