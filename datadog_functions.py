@@ -1,181 +1,95 @@
 from atlassian import Jira
-from langchain_core.tools import tool
 from dotenv import load_dotenv
-import os
+from datadog import initialize, api
+import os, time
+
 load_dotenv('.env')
 
-JIRA_URL = os.environ.get("JIRA_INSTANCE_URL")
-JIRA_USERNAME = os.environ.get("JIRA_USERNAME")
-JIRA_API_TOKEN = os.environ.get("JIRA_API_TOKEN")
+DATADOG_API_KEY = os.getenv("DATADOG_API_KEY")
+DATADOG_APP_KEY = os.getenv("DATADOG_APP_KEY")
 
+options = {
+    'api_key': DATADOG_API_KEY,
+    'app_key': DATADOG_APP_KEY
+}
 
-jira = Jira(url=JIRA_URL, username=JIRA_USERNAME, password=JIRA_API_TOKEN)
+initialize(**options)
 
-def create_issue(summary: str, description: str, issue_type: str) -> dict:
-    """
-    Creates a Jira issue.
-    :param summary: The issue summary
-    :param description: The issue description
-    :param issue_type: The issue type
-    :return: The created issue
-    """
+# --- Free tier useful functions ---
 
-    print("New issue is being created")
-    try:
-        new_issue = jira.create_issue(
-            fields={
-                "project": {"key": os.environ.get('JIRA_PROJECT_KEY')},
-                "summary": summary,
-                "description": description,
-                "issuetype": {"name": issue_type}
-            }
-        )
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
+# Send a custom gauge metric
+api.Metric.send(
+    metric='my.custom.metric',
+    points=100,
+    tags=["env:production", "team:backend"],
+    type="gauge"
+)
 
-    print(new_issue)
+# Send a counter metric (increment)
+api.Metric.send(
+    metric='jira.bugs.created',
+    points=1,
+    tags=['env:prod', 'jira'],
+    type="count"
+)
 
-def update_issue(issue_id: str, summary: str, description: str, issue_type: str) -> dict:
-    """
-    Updates a Jira issue.
-    :param issue_id: The issue ID
-    :param summary: The issue summary
-    :param description: The issue description
-    :param issue_type: The issue type
-    :return: The updated issue
-    """
+# Log an event (great for deployments, errors, milestones)
+api.Event.create(
+    title="Deployment successful",
+    text="Version 1.2.3 deployed to production environment.",
+    alert_type="success",
+    tags=["env:production", "deployment"]
+)
 
-    print("Updating issue" + issue_id)
-    try:
-        issue = jira.issue(issue_id)
+# Log an error event example
+api.Event.create(
+    title="Jira API Error",
+    text="Failed to create Jira issue due to timeout.",
+    alert_type="error",
+    tags=["jira", "error"]
+)
 
-        fields = {
-            "summary": summary if summary else issue.fields.summary,
-            "description": description if description else issue.fields.description,
-            "issuetype": {"name": issue_type if issue_type else issue.fields.issuetype.name}
-        }
+# Service check (monitor your app/service health - pass=0, warning=1, critical=2, unknown=3)
+api.ServiceCheck.check(
+    check="jira.service.health",
+    status=0,  # OK
+    tags=["env:prod"]
+)
 
-        issue.update(fields=fields)
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
+# --- Paid features (commented out, useful if you upgrade) ---
 
-def delete_issue(issue_id: str) -> dict:
-    """
-    Deletes a Jira issue.
-    :param issue_id: The issue ID
-    """
-    try:
-        jira.issue(issue_id).delete()
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
+# Query metrics (requires paid plan, will give "Forbidden" on free tier)
+# start_time = int(time.time()) - 3600
+# end_time = int(time.time())
+# result = api.Metric.query(
+#     start=start_time,
+#     end=end_time,
+#     query='avg:system.cpu.user{*}'
+# )
+# print("CPU Usage (last hour):", result)
 
-    return {
-        "message": "Issue deleted successfully"
-    }
+# Get list of events (useful for audit/log analysis)
+# events = api.Event.query(
+#     start=int(time.time()) - 3600,
+#     end=int(time.time()),
+#     tags="env:production"
+# )
+# print("Recent events:", events)
 
+# Get host list (paid feature, useful for infra monitoring)
+# hosts = api.Hosts.search()
+# print("Hosts:", hosts)
 
-def get_issue(issue_id: str) -> dict:
-    """
-    Gets a Jira issue.
-    :param issue_id: The issue ID
-    :return: The issue
-    """
-    try:
-        issue = jira.issue(issue_id)
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
+# --- Helper function example ---
 
-    return issue
+def send_latency_metric(latency_seconds):
+    api.Metric.send(
+        metric="jira.api.call.latency",
+        points=latency_seconds,
+        tags=["env:prod", "jira"],
+        type="gauge"
+    )
 
-def get_issues(project: str) -> dict:
-
-    print("Getting list of issues")
-
-    try:
-        issues = jira.search_issues(f"project={project}")
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
-
-    return {
-        "issues": [
-            {
-                "id": issue.id,
-                "key": issue.key,
-                "summary": issue.fields.summary,
-                "description": issue.fields.description,
-                "type": issue.fields.issuetype.name
-            } for issue in issues
-        ]
-    }
-
-def get_issue_comments(issue_id: str) -> dict:
-    """
-    Gets the comments for a Jira issue.
-    :param issue_id: The issue ID
-    :return: The comments
-    """
-    try:
-        comments = jira.comments(issue_id)
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
-
-    return {
-        'comments': [
-            {
-                'id': comment.id,
-                'body': comment.body
-            } for comment in comments
-        ]
-    }
-
-def get_issue_transitions(issue_id: str) -> dict:
-    """
-    Gets the transitions for a Jira issue.
-    :param issue_id: The issue ID
-    :return: The transitions
-    """
-    try:
-        transitions = jira.transitions(issue_id)
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
-
-    return {
-        'transitions': [
-            {
-                'id': transition['id'],
-                'name': transition['name']
-            } for transition in transitions
-        ]
-    }
-
-def transition_issue(issue_id: str, transition_id: str) -> dict:
-    """
-    Transitions a Jira issue.
-    :param issue_id: The issue ID
-    :param transition_id: The transition ID
-    :return: The transition result
-    """
-    try:
-        jira.transition_issue(issue_id, transition_id)
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
-
-    return {
-        "message": "Issue transitioned successfully"
-    }
+# Example usage
+fake_latency = 0.245  # seconds
+send_latency_metric(fake_latency)
