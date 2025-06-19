@@ -1,234 +1,115 @@
-🧠 GenAICoding
-GenAICoding is a smart assistant that helps you work with Jira by using simple language. Instead of learning complex Jira commands, just type what you want — and the system will do it for you using AI.
-
-Whether you want to create a task, update an issue, or check on progress, GenAICoding makes Jira easy.
-
-✅ What Can GenAICoding Do?
-Talk to Jira in plain English
-Just type your request, like:
-“Create a task to fix login bugs by Monday.”
-
-Create and update tasks
-The assistant understands what you want and handles it for you.
-
-Works securely with your own accounts
-You use your own keys (passwords/tokens) to connect your accounts, so everything stays private and secure.
-
-🧰 What Does It Use Behind the Scenes?
-You don’t need to worry about the technical details, but here’s what powers GenAICoding:
-
-OpenAI (ChatGPT) — Understands what you mean
-
-Jira — Where your tasks live
-
-LangChain — Helps everything work together
-
-Secure Settings — Keeps your login details safe using a .env file
-
-🔧 How to Set It Up
-You might need help from your technical team for the setup. But if you're comfortable, here’s a simplified guide:
-
-1. 📥 Download the Tool
-First, get the tool onto your computer:
-
-bash
-Copy code
-git clone https://github.com/your-username/GenAICoding.git
-cd GenAICoding
-2. 🔐 Add Your Login Info
-You’ll need to add your API keys (secure access codes) for OpenAI and Jira.
-
-Copy the example file:
-
-bash
-Copy code
-cp .env.example .env
-Open the new .env file
-
-Fill in your information:
-
-env
-Copy code
-OPENAI_API_KEY=your-openai-api-key
-JIRA_API_TOKEN=your-jira-api-token
-JIRA_EMAIL=your-email@example.com
-JIRA_DOMAIN=yourcompany.atlassian.net
-These keys let the assistant talk to Jira and OpenAI on your behalf.
-
-3. 📦 Install What’s Needed
-Run these commands:
-
-bash
-Copy code
-python3 -m venv venv
-source venv/bin/activate   # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-This installs all the tools needed to make the system run.
-
-4. ▶️ Start Using It
-Once everything is set up, run:
-
-bash
-Copy code
-python main.py
-Now you can just type what you want it to do.
-
-Example:
-
-“Create a task for the design team to update the mobile app icon.”
-
-The tool will understand and create a task in Jira — automatically.
-
-❓ Common Problems
-It says the API key is invalid
-→ Double-check your .env file — are your keys correct?
-
-Jira won’t connect
-→ Make sure you’re using your email and API token (not your password).
-
-Something’s not working
-→ Try re-running:
-
-bash
-Copy code
-pip install -r requirements.txt```
-🤝 Want to Improve It?
-If you're working with a developer, they can add features or make changes. Here’s how they contribute:
-
-bash
-Copy code
-git checkout -b new-feature
-git commit -m "Add something new"
-git push origin new-feature
-Then they open a Pull Request (PR) to suggest changes.
-
-📄 License
-This project uses the MIT License, which means you're free to use, edit, and share it however you like.
-
-Let me know if you'd like me to include screenshots, a logo, or even a short walkthrough video script.
-
-
-
-
-
-
-You said:
-put this in a format for which I can directly copy and paste it into vs code
-
-
-ChatGPT said:
-Sure! Below is your updated README in Markdown format — ready to be copied and pasted directly into README.md in VS Code.
-
-markdown
-Copy code
 # 🧠 GenAICoding
 
-**GenAICoding** is a smart assistant that helps you work with Jira by using simple language. Instead of learning complex Jira commands, just type what you want — and the system will do it for you using AI.
+**GenAICoding** is an AI-powered assistant that helps you interact with Jira using natural language. No more digging through menus or learning complicated Jira commands — just type what you need, and the system handles the rest.
 
-Whether you want to create a task, update an issue, or check on progress, GenAICoding makes Jira easy.
-
----
+Whether you’re assigning tasks, updating issues, or logging progress, GenAICoding makes Jira feel human.
 
 ## ✅ What Can GenAICoding Do?
 
 - **Talk to Jira in plain English**  
-  Just type your request, like:  
-  *“Create a task to fix login bugs by Monday.”*
+  Example:  
+  *“Create a task to fix the login issue by Monday.”*
 
-- **Create and update tasks**  
-  The assistant understands what you want and handles it for you.
+- **Create, update, or delete tasks**  
+  Automate common Jira actions without needing to remember issue IDs or workflow steps.
 
-- **Works securely with your own accounts**  
-  You use your own keys (passwords/tokens) to connect your accounts, so everything stays private and secure.
+- **Send monitoring data to Datadog**  
+  Track custom metrics, log events, and monitor service health directly from natural language prompts.
+
+- **Keep your data secure**  
+  You provide your own API keys and credentials through a `.env` file, so nothing sensitive is hardcoded.
 
 ---
 
-## 🧰 What Does It Use Behind the Scenes?
+## 🧰 What’s Powering GenAICoding?
 
-You don’t need to worry about the technical details, but here’s what powers GenAICoding:
+You don’t need to worry about the tech, but under the hood, here’s what’s working:
 
-- **OpenAI (ChatGPT)** — Understands what you mean  
-- **Jira** — Where your tasks live  
-- **LangChain** — Helps everything work together  
-- **Secure Settings** — Keeps your login details safe using a `.env` file
+- **OpenAI (ChatGPT)** – Understands what you want  
+- **Jira API** – Manages your tasks and projects  
+- **Datadog API** – Tracks metrics, service checks, and event logs  
+- **LangChain** – Helps the AI tools and APIs work together  
+- **Python + dotenv** – Keeps your keys and credentials safe
 
 ---
 
 ## 🔧 How to Set It Up
 
-You might need help from your technical team for the setup. But if you're comfortable, here’s a simplified guide:
+You may want help from your technical team, but here’s a simplified setup guide:
 
-### 1. 📥 Download the Tool
+### 1. 📥 Download the Project
 
 ```bash
 git clone https://github.com/your-username/GenAICoding.git
 cd GenAICoding
-2. 🔐 Add Your Login Info
-You’ll need to add your API keys (secure access codes) for OpenAI and Jira.
-
-Copy the example file:
+2. 🔐 Configure Your Credentials
+Create your .env file:
 
 bash
 Copy code
 cp .env.example .env
-Open the new .env file
-
-Fill in your information:
+Open the .env file and fill in your keys:
 
 env
 Copy code
 OPENAI_API_KEY=your-openai-api-key
 JIRA_API_TOKEN=your-jira-api-token
-JIRA_EMAIL=your-email@example.com
-JIRA_DOMAIN=yourcompany.atlassian.net
-These keys let the assistant talk to Jira and OpenAI on your behalf.
-
-3. 📦 Install What’s Needed
-Run these commands:
+JIRA_USERNAME=your-email@example.com
+JIRA_INSTANCE_URL=https://yourcompany.atlassian.net
+DATADOG_API_KEY=your-datadog-api-key
+DATADOG_APP_KEY=your-datadog-app-key
+JIRA_PROJECT_KEY=ABC
+3. 📦 Install Dependencies
+Run this in your terminal:
 
 bash
 Copy code
 python3 -m venv venv
-source venv/bin/activate   # On Windows: venv\Scripts\activate
+source venv/bin/activate 
 pip install -r requirements.txt
-This installs all the tools needed to make the system run.
-
 4. ▶️ Start Using It
-Once everything is set up, run:
+Run the assistant:
 
 bash
 Copy code
-python main.py
-Now you can just type what you want it to do.
+python main.py "Create a task for the design team to update the mobile app icon."
+The AI will interpret your request and perform the action in Jira.
 
-Example:
+🛠️ Supported Prompts
+Here are a few things you can say:
 
-“Create a task for the design team to update the mobile app icon.”
+"Create a new bug report for slow checkout flow"
 
-The tool will understand and create a task in Jira — automatically.
+"Update the issue ABC-123 with a new summary"
 
-❓ Common Problems
-It says the API key is invalid
-→ Double-check your .env file — are your keys correct?
+"Log a Datadog event saying 'Deployed version 2.0' tagged with 'env:prod'"
 
-Jira won’t connect
-→ Make sure you’re using your email and API token (not your password).
+"Send a service check for 'api.health' with status OK and tag it with 'env:staging'"
 
-Something’s not working
-→ Try re-running:
+❓ Troubleshooting
+“Invalid API key” error?
+Double-check that your .env file is correctly filled out.
+
+Jira connection failed?
+Make sure you're using your Jira email and API token, not your password.
+
+Something else not working?
+Try reinstalling dependencies:
 
 bash
 Copy code
 pip install -r requirements.txt
 🤝 Want to Improve It?
-If you're working with a developer, they can add features or make changes. Here’s how they contribute:
+If you’re a developer (or working with one), feel free to fork and enhance the project:
 
 bash
 Copy code
 git checkout -b new-feature
-git commit -m "Add something new"
+git commit -m "Add cool new thing"
 git push origin new-feature
-Then they open a Pull Request (PR) to suggest changes.
+Then open a Pull Request on GitHub to suggest your changes.
 
 📄 License
-This project uses the MIT License, which means you're free to use
+This project is licensed under the MIT License. You're free to use it, modify it, and share 
+
+
