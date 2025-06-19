@@ -1,181 +1,77 @@
-from atlassian import Jira
-from langchain_core.tools import tool
+from datadog import initialize, api
 from dotenv import load_dotenv
 import os
+import time
+
+# Load environment variables
 load_dotenv('.env')
 
-JIRA_URL = os.environ.get("JIRA_INSTANCE_URL")
-JIRA_USERNAME = os.environ.get("JIRA_USERNAME")
-JIRA_API_TOKEN = os.environ.get("JIRA_API_TOKEN")
+# Initialize Datadog API keys
+DATADOG_API_KEY = os.getenv("DATADOG_API_KEY")
+DATADOG_APP_KEY = os.getenv("DATADOG_APP_KEY")
 
+options = {
+    'api_key': DATADOG_API_KEY,
+    'app_key': DATADOG_APP_KEY
+}
 
-jira = Jira(url=JIRA_URL, username=JIRA_USERNAME, password=JIRA_API_TOKEN)
+initialize(**options)
 
-def create_issue(summary: str, description: str, issue_type: str) -> dict:
-    """
-    Creates a Jira issue.
-    :param summary: The issue summary
-    :param description: The issue description
-    :param issue_type: The issue type
-    :return: The created issue
-    """
+# --- Core Functions (Free Tier) ---
 
-    print("New issue is being created")
-    try:
-        new_issue = jira.create_issue(
-            fields={
-                "project": {"key": os.environ.get('JIRA_PROJECT_KEY')},
-                "summary": summary,
-                "description": description,
-                "issuetype": {"name": issue_type}
-            }
-        )
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
+def send_custom_metric(metric_name, value, tags, metric_type):
+    return api.Metric.send(
+        metric=metric_name,
+        points=value,
+        tags=tags,
+        type=metric_type
+    )
 
-    print(new_issue)
+def log_event(title, text, alert_type, tags):
+    return api.Event.create(
+        title=title,
+        text=text,
+        alert_type=alert_type,
+        tags=tags
+    )
 
-def update_issue(issue_id: str, summary: str, description: str, issue_type: str) -> dict:
-    """
-    Updates a Jira issue.
-    :param issue_id: The issue ID
-    :param summary: The issue summary
-    :param description: The issue description
-    :param issue_type: The issue type
-    :return: The updated issue
-    """
+def send_service_check(check_name, status, tags):
+    return api.ServiceCheck.check(
+        check=check_name,
+        status=status,
+        tags=tags
+    )
 
-    print("Updating issue" + issue_id)
-    try:
-        issue = jira.issue(issue_id)
+# --- Helper Function ---
 
-        fields = {
-            "summary": summary if summary else issue.fields.summary,
-            "description": description if description else issue.fields.description,
-            "issuetype": {"name": issue_type if issue_type else issue.fields.issuetype.name}
-        }
+def send_latency_metric(latency_seconds):
+    return send_custom_metric(
+        metric_name="jira.api.call.latency",
+        value=latency_seconds,
+        tags=["env:prod", "jira"],
+        metric_type="gauge"
+    )
 
-        issue.update(fields=fields)
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
+# --- Paid Tier Functions (Commented Out) ---
 
-def delete_issue(issue_id: str) -> dict:
-    """
-    Deletes a Jira issue.
-    :param issue_id: The issue ID
-    """
-    try:
-        jira.issue(issue_id).delete()
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
+# def query_metrics(query, minutes=60):
+#     """
+#     Query a metric time series (requires paid Datadog plan).
+#     """
+#     end = int(time.time())
+#     start = end - (minutes * 60)
+#     return api.Metric.query(start=start, end=end, query=query)
 
-    return {
-        "message": "Issue deleted successfully"
-    }
+# def query_events(tags, minutes=60):
+#     """
+#     Query recent events filtered by tags (requires paid Datadog plan).
+#     """
+#     end = int(time.time())
+#     start = end - (minutes * 60)
+#     return api.Event.query(start=start, end=end, tags=" ".join(tags))
 
-
-def get_issue(issue_id: str) -> dict:
-    """
-    Gets a Jira issue.
-    :param issue_id: The issue ID
-    :return: The issue
-    """
-    try:
-        issue = jira.issue(issue_id)
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
-
-    return issue
-
-def get_issues(project: str) -> dict:
-
-    print("Getting list of issues")
-
-    try:
-        issues = jira.search_issues(f"project={project}")
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
-
-    return {
-        "issues": [
-            {
-                "id": issue.id,
-                "key": issue.key,
-                "summary": issue.fields.summary,
-                "description": issue.fields.description,
-                "type": issue.fields.issuetype.name
-            } for issue in issues
-        ]
-    }
-
-def get_issue_comments(issue_id: str) -> dict:
-    """
-    Gets the comments for a Jira issue.
-    :param issue_id: The issue ID
-    :return: The comments
-    """
-    try:
-        comments = jira.comments(issue_id)
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
-
-    return {
-        'comments': [
-            {
-                'id': comment.id,
-                'body': comment.body
-            } for comment in comments
-        ]
-    }
-
-def get_issue_transitions(issue_id: str) -> dict:
-    """
-    Gets the transitions for a Jira issue.
-    :param issue_id: The issue ID
-    :return: The transitions
-    """
-    try:
-        transitions = jira.transitions(issue_id)
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
-
-    return {
-        'transitions': [
-            {
-                'id': transition['id'],
-                'name': transition['name']
-            } for transition in transitions
-        ]
-    }
-
-def transition_issue(issue_id: str, transition_id: str) -> dict:
-    """
-    Transitions a Jira issue.
-    :param issue_id: The issue ID
-    :param transition_id: The transition ID
-    :return: The transition result
-    """
-    try:
-        jira.transition_issue(issue_id, transition_id)
-    except Exception as e:
-        return {
-            "error": str(e)
-        }
-
-    return {
-        "message": "Issue transitioned successfully"
-    }
+# def get_host_list():
+#     """
+#     Get list of monitored hosts (requires paid Datadog plan).
+#     """
+#     return api.Hosts.search()

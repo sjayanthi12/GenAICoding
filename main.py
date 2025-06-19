@@ -1,58 +1,54 @@
 import os
 import sys
 import json
+import time
 from dotenv import load_dotenv
-from openai import OpenAI
-from datadog import initialize as dd_initialize, api as dd_api
-
-from jira_functions import create_issue, update_issue, delete_issue, get_issue, get_issues, get_issue_comments, transition_issue
+from openai import OpenAI, RateLimitError, OpenAIError
+from datadog import initialize as dd_initialize
+from datadog_functions import send_custom_metric, log_event, send_service_check
+from jira_functions import create_issue, update_issue, delete_issue, get_issue, get_issues, transition_issue
 
 load_dotenv()
 
-# Set up Datadog
+# Initialize Datadog
 dd_initialize(
     api_key=os.getenv("DATADOG_API_KEY"),
     app_key=os.getenv("DATADOG_APP_KEY")
 )
 
-# Setup OpenAI client
+# Initialize OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Function dispatcher
 def call_function(name, args):
     try:
-        if name == "create_issue":
-            result = create_issue(**args)
-        elif name == "update_issue":
-            result = update_issue(**args)
-        elif name == "delete_issue":
-            result = delete_issue(**args)
-        elif name == "get_issue":
-            result = get_issue(**args)
-        elif name == "get_issues":
-            result = get_issues(**args)
-        elif name == "get_issue_comments":
-            result = get_issue_comments(**args)
-        elif name == "transition_issue":
-            result = transition_issue(**args)
-        else:
+        functions = {
+            # Datadog
+            "send_custom_metric": send_custom_metric,
+            "log_event": log_event,
+            "send_service_check": send_service_check,
+            # Jira
+            "create_issue": create_issue,
+            "update_issue": update_issue,
+            "delete_issue": delete_issue,
+            "get_issue": get_issue,
+            "get_issues": get_issues,
+            "transition_issue": transition_issue
+        }
+        func = functions.get(name)
+        if func is None:
             return {"error": f"Unknown function '{name}'"}
-
-        # Log success to Datadog
-        dd_api.Event.create(
-            title=f"Function '{name}' executed successfully",
-            text=json.dumps(args, indent=2),
-            alert_type="info",
-            tags=["jira", name]
-        )
+        start = time.perf_counter()
+        result = func(**args)
+        duration = time.perf_counter() - start
+        send_custom_metric("jira.api.call.latency", duration, ["env:prod", name], "gauge")
         return result
     except Exception as e:
-        # Log error to Datadog
-        dd_api.Event.create(
+        log_event(
             title=f"Function '{name}' execution failed",
             text=str(e),
             alert_type="error",
-            tags=["jira", "error", name]
+            tags=["error", name]
         )
         return {"error": str(e)}
 
@@ -63,106 +59,178 @@ if len(sys.argv) < 2:
 
 user_prompt = sys.argv[1]
 
-# Define available tools
-tools = [
+# Tool definitions
+TOOLS = [
     {
         "type": "function",
-        "name": "create_issue",
-        "description": "Create a new issue in Jira project",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "summary": {"type": "string"},
-                "description": {"type": "string"},
-                "issue_type": {"type": "string"}
-            },
-            "required": ["summary", "description", "issue_type"],
-            "additionalProperties": False
-        },
-        "strict": True
+        "function": {
+            "name": "create_issue",
+            "description": "Create a new issue in a Jira project.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "project": {"type": "string"},
+                    "summary": {"type": "string"},
+                    "description": {"type": "string"},
+                    "issue_type": {"type": "string"}
+                },
+                "required": ["project", "summary", "description", "issue_type"]
+            }
+        }
     },
     {
         "type": "function",
-        "name": "get_issues",
-        "description": "Get list of all issues in a project",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "project": {"type": "string"}
-            },
-            "required": ["project"],
-            "additionalProperties": False
-        },
-        "strict": True
+        "function": {
+            "name": "update_issue",
+            "description": "Update an existing Jira issue.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "issue_id": {"type": "string"},
+                    "summary": {"type": "string"},
+                    "description": {"type": "string"},
+                    "issue_type": {"type": "string"}
+                },
+                "required": ["issue_id"]
+            }
+        }
     },
     {
         "type": "function",
-        "name": "update_issue",
-        "description": "Update an existing issue",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "issue_id": {"type": "string"},
-                "summary": {"type": "string"},
-                "description": {"type": "string"},
-                "issue_type": {"type": "string"}
-            },
-            "required": ["issue_id", "summary", "description", "issue_type"],
-            "additionalProperties": False
-        },
-        "strict": True
+        "function": {
+            "name": "delete_issue",
+            "description": "Delete a Jira issue.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "issue_id": {"type": "string"}
+                },
+                "required": ["issue_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_issue",
+            "description": "Retrieve a Jira issue by ID.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "issue_id": {"type": "string"}
+                },
+                "required": ["issue_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_issues",
+            "description": "Retrieve all issues for a Jira project.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "project": {"type": "string"}
+                },
+                "required": ["project"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_issue_comments",
+            "description": "Retrieve comments from a Jira issue.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "issue_id": {"type": "string"}
+                },
+                "required": ["issue_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_issue_transitions",
+            "description": "Retrieve available transitions for a Jira issue.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "issue_id": {"type": "string"}
+                },
+                "required": ["issue_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "transition_issue",
+            "description": "Transition a Jira issue to a different state.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "issue_id": {"type": "string"},
+                    "transition_id": {"type": "string"}
+                },
+                "required": ["issue_id", "transition_id"]
+            }
+        }
     }
 ]
 
-# Get AI tool recommendation
-input_messages = [{"role": "user", "content": user_prompt}]
-response = client.responses.create(
-    model="gpt-4.1",
-    input=input_messages,
-    tools=tools
-)
 
-# Extract and run the tool
-tool_call = response.output[0]
-name = tool_call.name
-args = json.loads(tool_call.arguments)
+# Get OpenAI response
+def get_openai_response(messages, tools):
+    for attempt in range(3):
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4.1",
+                messages=messages,
+                tools=tools
+            )
+            return response
+        except RateLimitError:
+            print(f"[WARN] Rate limit hit. Retrying in 5 seconds... ({attempt + 1}/3)")
+            time.sleep(5)
+        except OpenAIError as e:
+            print(f"[ERROR] OpenAI error: {e}")
+            sys.exit(1)
+    print("[FATAL] Rate limit persisted after retries. Exiting.")
+    sys.exit(1)
+
+# Prompt to OpenAI
+input_messages = [
+    {
+        "role": "system",
+        "content": (
+            "You are an AI assistant integrated with Jira and Datadog. "
+            "If the user asks to create, update, delete, or log anything, "
+            "you must call the appropriate tool function. "
+            "Do not just reply with helpful text unless explicitly asked. "
+            "Always prefer tool use over plain responses when possible."
+        )
+    },
+    {"role": "user", "content": user_prompt}
+]
+
+response = get_openai_response(input_messages, TOOLS)
+message = response.choices[0].message
+
+# Defensive check
+if not hasattr(message, "tool_calls") or message.tool_calls is None:
+    print("[ERROR] No tool call was returned by the model. Try rephrasing your prompt.")
+    print("AI replied with:", message.content)
+    sys.exit(1)
+
+# Execute tool call
+tool_call = message.tool_calls[0]
+name = tool_call.function.name
+args = json.loads(tool_call.function.arguments)
 
 print(f"[INFO] Calling function: {name} with args: {args}")
 result = call_function(name, args)
 print(json.dumps(result, indent=2))
-import os
-
-def load_dotenv(path=".env"):
-    """
-    Load environment variables from a .env file into os.environ
-    """
-    if not os.path.exists(path):
-        print(f"[WARN] No .env file found at {path}")
-        return {}
-
-    loaded_vars = {}
-
-    with open(path, "r") as f:
-        for line in f:
-            line = line.strip()
-
-            if not line or line.startswith("#"):
-                continue
-
-            if line.startswith("export "):
-                line = line.replace("export ", "", 1)
-
-            if "=" not in line:
-                print(f"[WARN] Skipping malformed line: {line}")
-                continue
-
-            key, value = line.split("=", 1)
-            key = key.strip()
-            value = value.split(" #")[0].strip().strip('"').strip("'")
-
-            if key not in os.environ:
-                os.environ[key] = value
-                loaded_vars[key] = value
-
-    print(f"[INFO] Loaded {len(loaded_vars)} environment variables from {path}")
-    return loaded_vars
