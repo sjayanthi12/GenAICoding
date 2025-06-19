@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from atlassian import Jira
 import json, sys
 from openai import OpenAI
-from jira_functions import create_issue, update_issue, delete_issue, get_issue, get_issues, get_issue_comments, transition_issue
+from jira_functions import create_issue, update_issue, delete_issue, get_issue, get_issues, get_issue_comments, transition_issue, send_latency_metric
 import tensorflow_probability as tfp
 
 tfd = tfp.distributions
